@@ -1,17 +1,15 @@
-# This package is no longer being updated! Please look for alternatives if that bothers you.
-
-Resize
+Resize (forked)
 ======
 
 Image resizing for the [Go programming language](http://golang.org) with common interpolation methods.
 
-[![Build Status](https://travis-ci.org/nfnt/resize.svg)](https://travis-ci.org/nfnt/resize)
+
 
 Installation
 ------------
 
 ```bash
-$ go get github.com/nfnt/resize
+$ go get github.com/trevorjamesmartin/resize
 ```
 
 It's that easy!
@@ -22,7 +20,7 @@ Usage
 This package needs at least Go 1.1. Import package with
 
 ```go
-import "github.com/nfnt/resize"
+import "github.com/trevorjamesmartin/resize"
 ```
 
 The resize package provides 2 functions:
@@ -54,38 +52,72 @@ Sample usage:
 package main
 
 import (
-	"github.com/nfnt/resize"
+	"github.com/trevorjamesmartin/resize"
+	"image"
+	"image/gif"
 	"image/jpeg"
+	"image/png"
 	"log"
 	"os"
 )
 
-func main() {
-	// open "test.jpg"
-	file, err := os.Open("test.jpg")
+func makeThumbNail(imagePath, thumb string) {
+	var err error
+
+	file, err := os.Open(imagePath)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// decode jpeg into image.Image
-	img, err := jpeg.Decode(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-	file.Close()
+	defer file.Close()
 
-	// resize to width 1000 using Lanczos resampling
+	var img image.Image
+
+	// decode into image.Image
+	switch filepath.Ext(imagePath) {
+	case ".jpg", ".jpeg":
+		img, err = jpeg.Decode(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case ".png":
+		img, err = png.Decode(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+	case ".gif":
+		img, err = gif.Decode(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+	default:
+		log.Fatal("Unsupported file type")
+	}
+	// resize to 640x360 using Lanczos resampling
 	// and preserve aspect ratio
-	m := resize.Resize(1000, 0, img, resize.Lanczos3)
-
-	out, err := os.Create("test_resized.jpg")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer out.Close()
+	m := resize.Thumbnail(640, 360, img, resize.Lanczos3)
 
 	// write new image to file
-	jpeg.Encode(out, m, nil)
+	out, err := os.Create(thumb)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer out.Close()
+
+	err = jpeg.Encode(out, m, nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func main() {
+	// thumbnail "test.jpg"
+	makeThumbnail("test.jpg", "test_thmb.jpg")
 }
 ```
 
@@ -102,47 +134,6 @@ Downsizing Samples
 Downsizing is not as simple as it might look like. Images have to be filtered before they are scaled down, otherwise aliasing might occur.
 Filtering is highly subjective: Applying too much will blur the whole image, too little will make aliasing become apparent.
 Resize tries to provide sane defaults that should suffice in most cases.
-
-### Artificial sample
-
-Original image
-![Rings](http://nfnt.github.com/img/rings_lg_orig.png)
-
-<table>
-<tr>
-<th><img src="http://nfnt.github.com/img/rings_300_NearestNeighbor.png" /><br>Nearest-Neighbor</th>
-<th><img src="http://nfnt.github.com/img/rings_300_Bilinear.png" /><br>Bilinear</th>
-</tr>
-<tr>
-<th><img src="http://nfnt.github.com/img/rings_300_Bicubic.png" /><br>Bicubic</th>
-<th><img src="http://nfnt.github.com/img/rings_300_MitchellNetravali.png" /><br>Mitchell-Netravali</th>
-</tr>
-<tr>
-<th><img src="http://nfnt.github.com/img/rings_300_Lanczos2.png" /><br>Lanczos2</th>
-<th><img src="http://nfnt.github.com/img/rings_300_Lanczos3.png" /><br>Lanczos3</th>
-</tr>
-</table>
-
-### Real-Life sample
-
-Original image  
-![Original](http://nfnt.github.com/img/IMG_3694_720.jpg)
-
-<table>
-<tr>
-<th><img src="http://nfnt.github.com/img/IMG_3694_300_NearestNeighbor.png" /><br>Nearest-Neighbor</th>
-<th><img src="http://nfnt.github.com/img/IMG_3694_300_Bilinear.png" /><br>Bilinear</th>
-</tr>
-<tr>
-<th><img src="http://nfnt.github.com/img/IMG_3694_300_Bicubic.png" /><br>Bicubic</th>
-<th><img src="http://nfnt.github.com/img/IMG_3694_300_MitchellNetravali.png" /><br>Mitchell-Netravali</th>
-</tr>
-<tr>
-<th><img src="http://nfnt.github.com/img/IMG_3694_300_Lanczos2.png" /><br>Lanczos2</th>
-<th><img src="http://nfnt.github.com/img/IMG_3694_300_Lanczos3.png" /><br>Lanczos3</th>
-</tr>
-</table>
-
 
 License
 -------
